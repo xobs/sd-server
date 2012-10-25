@@ -19,6 +19,26 @@ static int set_linemode(struct sdserver *server, int arg) {
     return 0;
 }
 
+static int set_r0(struct sdserver *server, int arg) {
+    server->registers[0] = arg;
+    return 0;
+}
+
+static int set_r1(struct sdserver *server, int arg) {
+    server->registers[1] = arg;
+    return 0;
+}
+
+static int set_r2(struct sdserver *server, int arg) {
+    server->registers[2] = arg;
+    return 0;
+}
+
+static int set_r3(struct sdserver *server, int arg) {
+    server->registers[3] = arg;
+    return 0;
+}
+
 int main(int argc, char **argv) {
     struct sdserver server;
     int ret;
@@ -41,9 +61,14 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    parse_add_hook(&server, "go", get_offset);
-    parse_add_hook(&server, "bm", set_binmode);
-    parse_add_hook(&server, "lm", set_linemode);
+    parse_set_hook(&server, "go", get_offset);
+    parse_set_hook(&server, "bm", set_binmode);
+    parse_set_hook(&server, "lm", set_linemode);
+
+    parse_set_hook(&server, "r0", set_r0);
+    parse_set_hook(&server, "r1", set_r1);
+    parse_set_hook(&server, "r2", set_r2);
+    parse_set_hook(&server, "r3", set_r3);
 
     while(1) {
         struct sdserver_cmd cmd;

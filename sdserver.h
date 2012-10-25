@@ -45,6 +45,9 @@ struct sdserver {
     uint8_t                     net_bfr[512];
     uint32_t                    net_bfr_ptr;
     struct sdserver_syscmd      *cmds;
+
+    /* Raw SD commands */
+    uint32_t                    registers[4];
 };
 
 
@@ -54,7 +57,7 @@ int parse_init(struct sdserver *server);
 int parse_get_next_command(struct sdserver *server, struct sdserver_cmd *cmd);
 int parse_set_mode(struct sdserver *server, enum sdserver_parse_mode mode);
 int parse_deinit(struct sdserver *server);
-int parse_add_hook(struct sdserver *server, char cmd[2], int
+int parse_set_hook(struct sdserver *server, char cmd[2], int
         (*hook)(struct sdserver *, int));
 
 int net_init(struct sdserver *server);

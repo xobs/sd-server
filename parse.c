@@ -235,7 +235,7 @@ int parse_get_next_command(struct sdserver *server, struct sdserver_cmd *cmd) {
     return ret;
 }
 
-int parse_add_hook(struct sdserver *server, char cmd[2], int
+int parse_set_hook(struct sdserver *server, char cmd[2], int
         (*hook)(struct sdserver *, int)) {
     struct sdserver_syscmd *syscmd = get_syscmd(server, (uint8_t *)cmd);
     if (!syscmd)
