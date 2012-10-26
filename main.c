@@ -1,47 +1,25 @@
 #define DEBUG
 #include <stdio.h>
 #include <errno.h>
+#include <strings.h>
 
-#include "sdserver.h"
+#include "sd.h"
 
-static int get_offset(struct sdserver *server, int arg) {
-    net_write(server, "Getting offset\n");
-    return 0;
-}
-
-static int set_binmode(struct sdserver *server, int arg) {
+static int set_binmode(struct sd *server, int arg) {
     parse_set_mode(server, PARSE_MODE_BINARY);
     return 0;
 }
 
-static int set_linemode(struct sdserver *server, int arg) {
+static int set_linemode(struct sd *server, int arg) {
     parse_set_mode(server, PARSE_MODE_LINE);
     return 0;
 }
 
-static int set_r0(struct sdserver *server, int arg) {
-    server->registers[0] = arg;
-    return 0;
-}
-
-static int set_r1(struct sdserver *server, int arg) {
-    server->registers[1] = arg;
-    return 0;
-}
-
-static int set_r2(struct sdserver *server, int arg) {
-    server->registers[2] = arg;
-    return 0;
-}
-
-static int set_r3(struct sdserver *server, int arg) {
-    server->registers[3] = arg;
-    return 0;
-}
-
 int main(int argc, char **argv) {
-    struct sdserver server;
+    struct sd server;
     int ret;
+
+    bzero(&server, sizeof(server));
 
     ret = net_init(&server);
     if (ret < 0) {
@@ -61,17 +39,11 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    parse_set_hook(&server, "go", get_offset);
     parse_set_hook(&server, "bm", set_binmode);
     parse_set_hook(&server, "lm", set_linemode);
 
-    parse_set_hook(&server, "r0", set_r0);
-    parse_set_hook(&server, "r1", set_r1);
-    parse_set_hook(&server, "r2", set_r2);
-    parse_set_hook(&server, "r3", set_r3);
-
     while(1) {
-        struct sdserver_cmd cmd;
+        struct sd_cmd cmd;
         ret = parse_get_next_command(&server, &cmd);
         if (ret < 0) {
             perror("Quitting");

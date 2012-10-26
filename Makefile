@@ -1,4 +1,4 @@
-SOURCES=main.c parse.c net.c
+SOURCES=main.c parse.c net.c sd.c gpio.c
 OBJECTS=$(SOURCES:.c=.o)
 EXEC=sdserver
 MY_CFLAGS += -Wall -Werror -O0 -g

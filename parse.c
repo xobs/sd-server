@@ -10,42 +10,42 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "sdserver.h"
+#include "sd.h"
 
-static int do_help(struct sdserver *server, int arg);
+static int do_help(struct sd *server, int arg);
 
-static struct sdserver_syscmd __cmds[] = {
+static struct sd_syscmd __cmds[] = {
     {"rc", 0, "Resets card, counters, and buffers"},
     {"bm", 0, "Switches to binary network mode"},
     {"lm", 0, "Switches to line network mode"},
-    {"  ", 0, ""},
+    {"  ", 0, "", do_help},
 
     {"ci", 0, "Returns card CID"},
     {"cs", 0, "Returns card CSD"},
-    {"  ", 0, ""},
+    {"  ", 0, "", do_help},
 
     {"so", CMD_FLAG_ARG, "Sets sector offset to arg"},
     {"sz", CMD_FLAG_ARG, "Sets sector size to arg"},
     {"go", 0, "Gets sector offset"},
     {"gz", 0, "Gets sector size"},
-    {"  ", 0, ""},
+    {"  ", 0, "", do_help},
 
     {"rs", 0, "Reads from current sector"},
     {"ws", 0, "Writes to current sector"},
-    {"  ", 0, ""},
+    {"  ", 0, "", do_help},
 
     {"rb", 0, "Resets buffer pointer to offset 0"},
     {"sb", CMD_FLAG_ARG, "Sets buffer value to arg and increments the pointer"},
     {"bp", 0, "Returns buffer pointer offset"},
     {"ps", CMD_FLAG_ARG, "Sets pattern seed to arg"},
     {"bc", 0, "Returns buffer contents"},
-    {"  ", 0, ""},
+    {"  ", 0, "", do_help},
 
     {"c+", 0, "Enable clock auto-tick"},
     {"c-", 0, "Disable clock auto-tick"},
     {"tk", 0, "Tick clock once"},
     {"tc", CMD_FLAG_ARG, "Tick clock number of times specified by arg"},
-    {"  ", 0, ""},
+    {"  ", 0, "", do_help},
 
     {"r0", CMD_FLAG_ARG, "Set SD register 0 to arg value"},
     {"r1", CMD_FLAG_ARG, "Set SD register 1 to arg value"},
@@ -53,58 +53,58 @@ static struct sdserver_syscmd __cmds[] = {
     {"r3", CMD_FLAG_ARG, "Set SD register 3 to arg value"},
     {"cd", CMD_FLAG_ARG, "Send raw SD command specified by the arg"},
     {"rr", 0, "Resets register values to 0"},
-    {"  ", 0, ""},
+    {"  ", 0, "", do_help},
 
     {"p-", 0, "Turns card power off"},
     {"p+", 0, "Turns card power on and resets card"},
-    {"  ", 0, ""},
+    {"  ", 0, "", do_help},
 
     {"ip", CMD_FLAG_ARG, "Set destination IPv4 address to arg"},
     {"up", CMD_FLAG_ARG, "Set destination UDP port to arg"},
-    {"  ", 0, ""},
+    {"  ", 0, "", do_help},
 
     {"he", 0, "Print this help message", do_help},
     {"??", 0, "Print this help message", do_help},
     {"\0\0", 0, NULL},
 };
 
-static int do_help(struct sdserver *server, int arg) {
-    struct sdserver_syscmd *c = server->cmds;
+static int do_help(struct sd *server, int arg) {
+    struct sd_syscmd *c = server->cmds;
     net_write(server, "Commands:\n");
     while (c->description) {
         char help_line[512];
-        snprintf(help_line, sizeof(help_line)-1, "    %c%c %s  %s\n", 
+        snprintf(help_line, sizeof(help_line)-1, "    %c%c %s %c %s\n", 
                 c->cmd[0], c->cmd[1], (c->flags&CMD_FLAG_ARG)?"arg":"   ",
-                c->description);
+                c->handle_cmd?' ':'*', c->description);
         net_write(server, help_line);
         c++;
     }
     return 0;
 }
 
-static int do_unknown_cmd(struct sdserver *server, int arg) {
+static int do_unknown_cmd(struct sd *server, int arg) {
     printf("Unrecognized command\n");
     net_write(server, "? Unrecognized command\n");
     return 0;
 }
 
-static int do_error_cmd(struct sdserver *server, int arg) {
+static int do_error_cmd(struct sd *server, int arg) {
     printf("Error\n");
     net_write(server, "Error occurred\n");
     return 0;
 }
 
-static struct sdserver_syscmd unknown_cmd =
+static struct sd_syscmd unknown_cmd =
     {"?!", 0, "Unknown command", do_unknown_cmd};
 
 
-static struct sdserver_syscmd error_cmd =
+static struct sd_syscmd error_cmd =
     {"!!", 0, "An error occurred", do_error_cmd};
 
 
-static struct sdserver_syscmd *get_syscmd(struct sdserver *server,
+static struct sd_syscmd *get_syscmd(struct sd *server,
                                           const uint8_t txt[2]) {
-    struct sdserver_syscmd *c = server->cmds;
+    struct sd_syscmd *c = server->cmds;
     while(c->description) {
         if (!memcmp(c->cmd, txt, sizeof(c->cmd)))
             return c;
@@ -113,8 +113,8 @@ static struct sdserver_syscmd *get_syscmd(struct sdserver *server,
     return NULL;
 }
 
-static int is_valid_command(struct sdserver *server, struct sdserver_cmd *cmd) {
-    struct sdserver_syscmd *syscmd;
+static int is_valid_command(struct sd *server, struct sd_cmd *cmd) {
+    struct sd_syscmd *syscmd;
     syscmd = get_syscmd(server, cmd->cmd);
     if (syscmd)
         return 1;
@@ -135,7 +135,7 @@ static int getnnline(uint8_t *output, int output_len,
 }
 
 
-static int real_parse_cmd(struct sdserver *server, struct sdserver_cmd *cmd,
+static int real_parse_cmd(struct sd *server, struct sd_cmd *cmd,
                           uint8_t *buf, int len) {
     int size_copied;
 
@@ -162,7 +162,7 @@ static int real_parse_cmd(struct sdserver *server, struct sdserver_cmd *cmd,
     else if (server->parse_mode == PARSE_MODE_LINE) {
         uint8_t line[BUFSIZ];
         int offset;
-        struct sdserver_syscmd *syscmd;
+        struct sd_syscmd *syscmd;
 
         size_copied = getnnline(line, sizeof(line)-1, buf, len);
 
@@ -209,12 +209,12 @@ static int real_parse_cmd(struct sdserver *server, struct sdserver_cmd *cmd,
     return size_copied;
 }
 
-int parse_get_next_command(struct sdserver *server, struct sdserver_cmd *cmd) {
+int parse_get_next_command(struct sd *server, struct sd_cmd *cmd) {
     uint8_t *buf;
     int ret;
 
     if (server->parse_mode == PARSE_MODE_LINE)
-        net_write(server, SD_PROMPT);
+        net_write(server, NET_PROMPT);
     else
         fprintf(stderr, "Parse mode is %d\n", server->parse_mode);
 
@@ -235,28 +235,28 @@ int parse_get_next_command(struct sdserver *server, struct sdserver_cmd *cmd) {
     return ret;
 }
 
-int parse_set_hook(struct sdserver *server, char cmd[2], int
-        (*hook)(struct sdserver *, int)) {
-    struct sdserver_syscmd *syscmd = get_syscmd(server, (uint8_t *)cmd);
+int parse_set_hook(struct sd *server, char cmd[2], int
+        (*hook)(struct sd *, int)) {
+    struct sd_syscmd *syscmd = get_syscmd(server, (uint8_t *)cmd);
     if (!syscmd)
         return -1;
     syscmd->handle_cmd = hook;
     return 0;
 }
 
-int parse_set_mode(struct sdserver *server, enum sdserver_parse_mode mode) {
+int parse_set_mode(struct sd *server, enum sd_parse_mode mode) {
     server->parse_mode = mode;
     return 0;
 }
 
-int parse_init(struct sdserver *server) {
+int parse_init(struct sd *server) {
     server->parse_mode = PARSE_MODE_LINE;
     server->cmds = malloc(sizeof(__cmds));
     memcpy(server->cmds, __cmds, sizeof(__cmds));
     return 0;
 }
 
-int parse_deinit(struct sdserver *server) {
+int parse_deinit(struct sd *server) {
     free(server->cmds);
     return 0;
 }

@@ -10,17 +10,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "sdserver.h"
+#include "sd.h"
 
 
-int net_write(struct sdserver *server, char *txt) {
+int net_write(struct sd *server, char *txt) {
     return write(server->net_fd, txt, strlen(txt)+1);
 }
 
 /* Note: This assumes the client is very well behaved (e.g. it sends
  * complete commands in a single packet)
  */
-int net_get_packet(struct sdserver *server, uint8_t **data) {
+int net_get_packet(struct sd *server, uint8_t **data) {
     int ret;
     int tries;
 
@@ -59,7 +59,7 @@ int net_get_packet(struct sdserver *server, uint8_t **data) {
     return ret;
 }
 
-int net_accept(struct sdserver *server) {
+int net_accept(struct sd *server) {
     socklen_t len = sizeof(server->net_sockaddr);
     server->net_fd = accept(server->net_socket,
                             (struct sockaddr *)&(server->net_sockaddr),
@@ -67,7 +67,7 @@ int net_accept(struct sdserver *server) {
     return server->net_fd;
 }
 
-int net_init(struct sdserver *server) {
+int net_init(struct sd *server) {
     int res;
     int val;
     socklen_t len;
@@ -80,7 +80,7 @@ int net_init(struct sdserver *server) {
 
     bzero(&server->net_sockaddr, sizeof(server->net_sockaddr));
     server->net_sockaddr.sin_family = AF_INET;
-    server->net_sockaddr.sin_port = htons(SD_PORT);
+    server->net_sockaddr.sin_port = htons(NET_PORT);
     server->net_sockaddr.sin_addr.s_addr = INADDR_ANY;
 
     res = bind(server->net_socket,
@@ -92,7 +92,7 @@ int net_init(struct sdserver *server) {
         return -1;
     }
 
-    res = listen(server->net_socket, SD_MAX_CONNECTIONS);
+    res = listen(server->net_socket, NET_MAX_CONNECTIONS);
     if (res != 0) {
         perror("Couldn't call listen()");
         close(server->net_socket);
@@ -110,7 +110,7 @@ int net_init(struct sdserver *server) {
     return 0;
 }
 
-int net_deinit(struct sdserver *server) {
+int net_deinit(struct sd *server) {
     close(server->net_fd);
     close(server->net_socket);
 
