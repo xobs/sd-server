@@ -5,6 +5,27 @@
 
 #include "sd.h"
 
+/* Pin connection:
+ * SD  | MX233
+ * 9   | 0
+ * 1   | 1
+ * 2   | 2
+ * 3   | GND
+ * DET | 3
+ * 4   | [power switch]
+ * 5   | 4
+ * 6   | GND
+ * 7   | 7
+ * 8   | NC (was: 6)
+ */
+
+#define CS_PIN 1
+#define DATA_IN_PIN 7
+#define CLK_PIN 4
+#define DATA_OUT_PIN 2
+#define POWER_PIN 3
+
+
 static int set_binmode(struct sd *server, int arg) {
     parse_set_mode(server, PARSE_MODE_BINARY);
     return 0;
@@ -30,6 +51,14 @@ int main(int argc, char **argv) {
     ret = parse_init(&server);
     if (ret < 0) {
         perror("Couldn't initialize parser");
+        return 1;
+    }
+
+    ret = sd_init(&server,
+                  DATA_IN_PIN, DATA_OUT_PIN,
+                  CLK_PIN, CS_PIN, POWER_PIN);
+    if (ret < 0) {
+        perror("Couldn't initialize sd");
         return 1;
     }
 

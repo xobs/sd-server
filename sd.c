@@ -64,33 +64,7 @@ static uint8_t crc7(uint8_t crc, const uint8_t *buffer, size_t len)
 }
 
 
-static int set_r0(struct sd *server, int arg) {
-    server->sd_registers[0] = arg;
-    return 0;
-}
-
-static int set_r1(struct sd *server, int arg) {
-    server->sd_registers[1] = arg;
-    return 0;
-}
-
-static int set_r2(struct sd *server, int arg) {
-    server->sd_registers[2] = arg;
-    return 0;
-}
-
-static int set_r3(struct sd *server, int arg) {
-    server->sd_registers[3] = arg;
-    return 0;
-}
-
-static int clear_regs(struct sd *server, int arg) {
-    bzero(server->sd_registers, sizeof(server->sd_registers));
-    return 0;
-}
-
-
-static int sd_tick(struct sd *sd) {
+static int do_tick(struct sd *sd) {
     gpio_set_value(sd->sd_clk, 1);
     usleep(2);
     gpio_set_value(sd->sd_clk, 0);
@@ -101,7 +75,7 @@ static int sd_tick(struct sd *sd) {
 
 static int write_bit(struct sd *sd, int bit) {
     gpio_set_value(sd->sd_data_out, !!bit);
-    sd_tick(sd);
+    do_tick(sd);
     return 0;
 }
 
@@ -141,9 +115,58 @@ static int real_send_cmd(struct sd *sd, uint8_t cmd, uint8_t args[4]) {
     return 0;
 }
 
+
+
+
+/* Network commands */
+
+
 static int send_cmd(struct sd *sd, int arg) {
     return real_send_cmd(sd, arg, sd->sd_registers);
 }
+
+
+static int set_r0(struct sd *sd, int arg) {
+    sd->sd_registers[0] = arg;
+    return 0;
+}
+
+static int set_r1(struct sd *sd, int arg) {
+    sd->sd_registers[1] = arg;
+    return 0;
+}
+
+static int set_r2(struct sd *sd, int arg) {
+    sd->sd_registers[2] = arg;
+    return 0;
+}
+
+static int set_r3(struct sd *sd, int arg) {
+    sd->sd_registers[3] = arg;
+    return 0;
+}
+
+static int clear_regs(struct sd *sd, int arg) {
+    bzero(sd->sd_registers, sizeof(sd->sd_registers));
+    return 0;
+}
+
+static int do_one_tick(struct sd *sd, int arg) {
+    do_tick(sd);
+    return 0;
+}
+
+static int do_some_ticks(struct sd *sd, int arg) {
+    int i;
+    for (i=0; i<arg; i++)
+        do_tick(sd);
+    return 0;
+}
+
+
+
+/* Init commands */
+
 
 int sd_init(struct sd *sd, uint8_t data_in, uint8_t data_out,
                            uint8_t clk, uint8_t cs, uint8_t power) {
@@ -199,6 +222,8 @@ int sd_init(struct sd *sd, uint8_t data_in, uint8_t data_out,
     parse_set_hook(sd, "r3", set_r3);
     parse_set_hook(sd, "rr", clear_regs);
     parse_set_hook(sd, "cd", send_cmd);
+    parse_set_hook(sd, "tk", do_one_tick);
+    parse_set_hook(sd, "tc", do_some_ticks);
 
     return 0;
 }
