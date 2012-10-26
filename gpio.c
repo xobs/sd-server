@@ -25,6 +25,7 @@ static int gpio_is_exported(int gpio) {
 
 
 static int gpio_export_unexport(char *path, int gpio) {
+#ifdef linux
 	int fd;
 	char str[16];
 	int bytes;
@@ -44,6 +45,7 @@ static int gpio_export_unexport(char *path, int gpio) {
 	}
 
 	close(fd);
+#endif
 	return 0;
 }
 
@@ -68,8 +70,8 @@ int gpio_set_direction(int gpio, int is_output) {
 
 	fd = open(gpio_path, O_WRONLY);
 	if (fd == -1) {
-		fprintf(stderr, "Direction file: [%s]\n", gpio_path);
-		perror("Couldn't open direction file for gpio");
+		fprintf(stderr, "Couldn't open direction file [%s] for gpio: %s\n",
+                gpio_path, strerror(errno));
 		return -errno;
 	}
 
@@ -98,8 +100,8 @@ int gpio_set_value(int gpio, int value) {
 
 	fd = open(gpio_path, O_WRONLY);
 	if (fd == -1) {
-		fprintf(stderr, "Value file: [%s]\n", gpio_path);
-		perror("Couldn't open value file for gpio");
+		fprintf(stderr, "Couldn't open value file [%s] for gpio: %s\n",
+                gpio_path, strerror(errno));
 		return -errno;
 	}
 
